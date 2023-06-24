@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// https://authjs.dev/reference/adapter/prisma#create-the-prisma-schema-from-scratch
+
+// 1. generator client：這是一個生成器的定義，並且被命名為 "client"。生成器用於生成 Prisma Client，這是一個用於與數據庫交互的程式庫。
+// 2. provider = "prisma-client-js"：這是生成器的配置屬性，指定生成器使用的提供者 (provider) 為 "prisma-client-js"。這表示生成的 Prisma Client 將使用 Prisma 官方提供的 JavaScript 版本。
+// 總結來說，這段程式碼的作用是定義生成器的配置，以生成 Prisma Client，並指定使用的提供者為 "prisma-client-js"，這樣就可以生成用於與數據庫交互的 Prisma Client 程式庫。
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. datasource db：這是一個數據源的定義，並且被命名為 "db"。數據源用於指定 Prisma 如何連接和操作數據庫。
+// 2. provider = "mysql"：這是數據源的配置屬性，指定數據源使用的數據庫提供者為 MySQL。這表示要連接的數據庫是 MySQL。
+// 3. url = env("DATABASE_URL")：這是數據源的配置屬性，指定數據庫的連接 URL。在這個例子中，使用了 env 函數來讀取環境變數中的 DATABASE_URL，並將其作為連接數據庫的 URL。
+// 4. relationMode = "prisma"：這是數據源的配置屬性，指定關聯模式 (relation mode) 為 "prisma"。關聯模式用於定義 Prisma 如何處理數據庫關聯。
+// 總結來說，這段程式碼的作用是定義數據源的配置，指定要使用的數據庫提供者為 MySQL，並使用環境變數中的 DATABASE_URL 作為連接數據庫的 URL。同時，關聯模式被設置為 "prisma"，以便 Prisma 可以適當地處理數據庫關聯。
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+// 這段程式碼定義了一個 "Account" 模型，包含了帳戶相關的屬性和關聯。它描述了帳戶的基本結構，並通過關聯連接到使用者模型。同時，它還定義了一些約束，例如唯一性約束和索引，以確保數據的完整性和查詢的效率。
+model Account {
+  // 什麼是 cuid https://javascript.plainenglish.io/uuid-vs-nanoid-vs-cuid-c4fc1502325b
+  // id String @id @default(cuid())：定義了一個名為 "id" 的字段，作為主鍵並使用 cuid() 函數作為默認值生成器。
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  // refresh_token String? @db.Text：定義了一個可選的名為 "refresh_token" 的字段，用於存儲刷新令牌。此字段在數據庫中的類型被指定為 Text。
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  // user User @relation(fields: [userId], references: [id], onDelete: Cascade)：定義了與 "User" 模型的關聯，通過 "userId" 字段關聯到 "User" 模型的 "id" 字段。並且指定了在刪除關聯的時候要執行的操作為級聯刪除。
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // @@unique([provider, providerAccountId])：定義了一個唯一性約束，確保 "provider" 和 "providerAccountId" 兩個字段的組合值在整個表中是唯一的。
+  @@unique([provider, providerAccountId])
+  // https://www.prisma.io/docs/concepts/components/prisma-schema/relations/relation-mode#indexes
+  // With `relationMode = "prisma"`, no foreign keys are used, so relation fields will not benefit from the index usually created by the relational database under the hood. This can lead to poor performance when querying these fields. We recommend adding an index manually.
+  // @@index([userId])：定義了一個索引，加速根據 "userId" 欄位進行查詢的效率。
+  @@index([userId])
+}
+
+// 這段程式碼定義了一個 "Session" 模型，描述了會話相關的屬性和關聯。它包含了會話的基本結構，並通過關聯連接到使用者模型。同時，它還定義了一個唯一性索引，確保會話令牌的唯一性，以及一個索引以提高根據使用者 ID 查詢的效率。
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  // user User @relation(fields: [userId], references: [id], onDelete: Cascade)：定義了與 "User" 模型的關聯，通過 "userId" 字段關聯到 "User" 模型的 "id" 字段。並且指定了在刪除關聯的時候要執行的操作為級聯刪除。
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// 這段程式碼定義了一個 "User" 模型，描述了使用者相關的屬性和關聯。它包含了使用者的基本結構，如名稱、電子郵件、圖像等。同時，它還定義了與 "Account" 模型和 "Session" 模型的關聯，表示一個使用者可以擁有多個帳戶和會話。
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+
+  image String?
+
+  // accounts Account[]：定義了一個名為 "accounts" 的關聯字段，表示使用者與多個 "Account" 模型相關聯。
+  accounts Account[]
+
+  // sessions Session[]：定義了一個名為 "sessions" 的關聯字段，表示使用者與多個 "Session" 模型相關聯。
+  sessions Session[]
+}
