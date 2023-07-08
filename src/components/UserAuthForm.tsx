@@ -1,10 +1,11 @@
-'use client'
+"use client";
 
 import { FC, useState } from "react";
 import { Button } from "./ui/Button";
 import { cn } from "@/lib/utils";
 import { signIn } from "next-auth/react";
 import { Icons } from "./Icons";
+import { useToast } from "@/hooks/use-toast";
 
 /*
 定義了一個名為 UserAuthFormProps 的介面（interface）。該介面擴展了 React.HTMLAttributes<HTMLDivElement>。
@@ -21,6 +22,7 @@ interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 const UserAuthForm: FC<UserAuthFormProps> = ({ className, ...props }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const { toast } = useToast();
 
   const loginWithGoogle = async () => {
     setIsLoading(true);
@@ -31,6 +33,11 @@ const UserAuthForm: FC<UserAuthFormProps> = ({ className, ...props }) => {
     } catch (error) {
       // toast notification
       // https://ui.shadcn.com/docs/components/toast
+      toast({
+        title: "There was a problem.",
+        description: "There was an error logging in with Google",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -44,7 +51,7 @@ const UserAuthForm: FC<UserAuthFormProps> = ({ className, ...props }) => {
         size="sm"
         className="w-full"
       >
-        {isLoading?null:<Icons.google className="h-4 w-4 mr-2"/>}
+        {isLoading ? null : <Icons.google className="h-4 w-4 mr-2" />}
         Google
       </Button>
     </div>

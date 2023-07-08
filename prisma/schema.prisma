@@ -69,11 +69,124 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
 
+  // 明確指定 User 模型的 createdSubreddits 字段和 Subreddit 模型的 Creator 字段之間的關聯名稱是為了提供更具描述性和可識別的關聯名稱，這在以下情況下可能會有幾個影響：
+  // 可讀性和理解性：具有明確的關聯名稱可以提高代碼的可讀性和理解性。開發人員能夠更輕鬆地理解模型之間的關聯性和相互作用，而不需要深入研究關聯字段的名稱和類型。
+  // 冲突解決：當模型之間存在多個關聯時，明確指定關聯名稱可以解決潛在的冲突。如果沒有指定關聯名稱，Prisma 可能會生成默認的關聯名稱，這可能會導致不容易識別和區分的關聯。
+  // 自定義操作：明確的關聯名稱可以讓你更輕鬆地在 Prisma 的操作中使用自定義的關聯名稱。例如，在使用 Prisma 的 include 或 select 操作時，你可以指定要加載或選擇的關聯，而不需要依賴默認生成的關聯名稱。
+  createdSubreddits Subreddit[]    @relation("CreatedBy")
+  subscriptions     Subscription[]
+  votes             Vote[]
+
+  username String? @unique
+
   image String?
 
   // accounts Account[]：定義了一個名為 "accounts" 的關聯字段，表示使用者與多個 "Account" 模型相關聯。
   accounts Account[]
 
   // sessions Session[]：定義了一個名為 "sessions" 的關聯字段，表示使用者與多個 "Session" 模型相關聯。
-  sessions Session[]
+  sessions    Session[]
+  Post        Post[]
+  Comment     Comment[]
+  CommentVote CommentVote[]
+}
+
+model Subreddit {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  // updatedAt: DateTime類型，表示 "Subreddit" 的更新時間。使用了 @updatedAt 指示符，表示當對該行進行更新操作時，該字段將自動更新為當前時間。
+  updatedAt DateTime @updatedAt
+  posts     Post[]
+
+  creatorId   String?
+  // 明確指定 User 模型的 createdSubreddits 字段和 Subreddit 模型的 Creator 字段之間的關聯名稱是為了提供更具描述性和可識別的關聯名稱，這在以下情況下可能會有幾個影響：
+  // 可讀性和理解性：具有明確的關聯名稱可以提高代碼的可讀性和理解性。開發人員能夠更輕鬆地理解模型之間的關聯性和相互作用，而不需要深入研究關聯字段的名稱和類型。
+  // 冲突解決：當模型之間存在多個關聯時，明確指定關聯名稱可以解決潛在的冲突。如果沒有指定關聯名稱，Prisma 可能會生成默認的關聯名稱，這可能會導致不容易識別和區分的關聯。
+  // 自定義操作：明確的關聯名稱可以讓你更輕鬆地在 Prisma 的操作中使用自定義的關聯名稱。例如，在使用 Prisma 的 include 或 select 操作時，你可以指定要加載或選擇的關聯，而不需要依賴默認生成的關聯名稱。
+  Creator     User?          @relation("CreatedBy", fields: [creatorId], references: [id])
+  subscribers Subscription[]
+
+  // 因為我們之後會有搜尋 model Subreddit 的 name 欄位的功能，所以對 name 做 index 可以加快搜尋的效能
+  @@index([name])
+}
+
+model Subscription {
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+  subreddit   Subreddit @relation(fields: [subredditId], references: [id])
+  subredditId String
+
+  @@id([userId, subredditId])
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subreddit   Subreddit @relation(fields: [subredditId], references: [id])
+  subredditId String
+
+  author   User   @relation(fields: [authorId], references: [id])
+  authorId String
+
+  comments Comment[]
+  votes    Vote[]
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  text      String
+  createdAt DateTime @default(now())
+
+  author   User   @relation(fields: [authorId], references: [id])
+  authorId String
+
+  post   Post   @relation(fields: [postId], references: [id])
+  postId String
+
+  // 這段代碼定義了一個具有自我關聯的 "Comment" 模型。它允許每個評論擁有一個可選的回覆評論，並且一個評論可以有多個回覆評論。這種自我關聯的結構可以用於構建回覆或評論
+  // 如何定義一個具有自我關聯的模型請參考 README.md
+  replyToId String?
+  replyTo   Comment?  @relation("ReplyTo", fields: [replyToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies   Comment[] @relation("ReplyTo")
+
+  votes     CommentVote[]
+  commentId String?
+}
+
+enum VoteType {
+  UP
+  DOWN
+}
+
+model Vote {
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  post   Post   @relation(fields: [postId], references: [id])
+  postId String
+
+  type VoteType
+
+  // Vote模型使用@@id指令定义了复合主键，由userId和postId两个字段组成，保证了一个用户对同一篇帖子只能投票一次
+  @@id([userId, postId])
+}
+
+model CommentVote {
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId String
+
+  type VoteType
+
+  // 這裡不使用 cuid 而是使用 @@id([userId,commentId]) 複合主鍵的原因
+  // cuid() 是一種用於生成唯一標識符的方法，但不能保證絕對的唯一性。儘管碰撞的可能性很低，但仍存在可能。
+  // 相反，使用 @@id([userId, commentId]) 複合主鍵的定義可以確保組合鍵的唯一性。這是因為它使用了兩個字段的組合作為主鍵，這就意味著每個組合都是唯一的，不會有碰撞的情況。
+  @@id([userId, commentId])
 }
