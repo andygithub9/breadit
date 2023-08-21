@@ -104,6 +104,5 @@ export const authOptions: NextAuthOptions = {
     },
   },
 };
-
-// https://next-auth.js.org/configuration/nextjs#in-app-directory
+// https://next-auth.js.org/configuration/nextjs#in-app-router
 export const getAuthSession = () => getServerSession(authOptions);

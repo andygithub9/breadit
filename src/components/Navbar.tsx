@@ -4,6 +4,7 @@ import { buttonVariants } from "./ui/Button";
 import { FC } from "react";
 import { getAuthSession } from "@/lib/auth";
 import UserAccountNav from "./UserAccountNav";
+import SearchBar from "./SearchBar";
 
 const Navbar = async () => {
   const session = await getAuthSession();
@@ -20,6 +21,7 @@ const Navbar = async () => {
         </Link>
 
         {/* search bar */}
+        <SearchBar />
 
         {session?.user ? (
           <UserAccountNav user={session.user} />

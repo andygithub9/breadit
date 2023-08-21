@@ -110,5 +110,106 @@ model Vote {
 这样的设计意味着一个用户对于同一个帖子只能有一条投票记录，确保了投票的唯一性。
 
 # push prisma schema to database and generate typescript type
+
 1. push prisma schema to database `npx prisma db push`
-2. generate typescript type ``
+2. generate typescript type `npx prisma generate`
+
+# next/navigation notFound()
+
+https://nextjs.org/docs/app/api-reference/functions/not-found
+
+# 登入失敗的 troubleshooting
+
+```sh
+[next-auth][error][adapter_error_getUserByAccount]
+https://next-auth.js.org/errors#adapter_error_getuserbyaccount
+Invalid `prisma.account.findUnique()` invocation:
+
+
+Error querying the database: Server error: `ERROR HY000 (1105): unavailable: unable to connect to branch 5wr4aj35dxmy' {
+  message: '\n' +
+    'Invalid `prisma.account.findUnique()` invocation:\n' +
+    '\n' +
+    '\n' +
+    "Error querying the database: Server error: `ERROR HY000 (1105): unavailable: unable to connect to branch 5wr4aj35dxmy'",
+  stack: 'PrismaClientInitializationError: \n' +
+    'Invalid `prisma.account.findUnique()` invocation:\n' +
+    '\n' +
+    '\n' +
+    "Error querying the database: Server error: `ERROR HY000 (1105): unavailable: unable to connect to branch 5wr4aj35dxmy'\n" +
+    '    at Rn.handleRequestError (/Users/tvbs/Documents/GitHub/breadit-2/node_modules/@prisma/client/runtime/library.js:174:7601)\n' +
+    '    at Rn.handleAndLogRequestError (/Users/tvbs/Documents/GitHub/breadit-2/node_modules/@prisma/client/runtime/library.js:174:6754)\n' +
+    '    at /Users/tvbs/Documents/GitHub/breadit-2/node_modules/@prisma/client/runtime/library.js:177:3010\n' +
+    '    at async /Users/tvbs/Documents/GitHub/breadit-2/node_modules/@prisma/client/runtime/library.js:177:3225\n' +
+    '    at async t._executeRequest (/Users/tvbs/Documents/GitHub/breadit-2/node_modules/@prisma/client/runtime/library.js:177:11403)\n' +
+    '    at async getUserByAccount (webpack-internal:///(sc_server)/./node_modules/@next-auth/prisma-adapter/dist/index.js:222:29)',
+  name: 'PrismaClientInitializationError'
+}
+```
+
+可以看到 Error querying the database: Server error: ERROR HY000 (1105): unavailable: unable to connect to branch 5wr4aj35dxmy' 和 Invalid prisma.account.findUnique() 表示沒辦法連接到數據庫，到 https://app.planetscale.com/ 登入之後會發現數據庫顯示 Database sleeping
+
+1. 點擊數據庫
+2. 點擊 Wake database
+3. 會需要一段時間啟動，啟動完成後再嘗試回我們的網頁登入
+
+# 通過 Prisma Studio 連進數據庫看資料
+
+在終端機下指令 `npx prisma studio` Prisma Studio 會給你一個 url 連進去就可以看到你連接的資料庫的資料了
+
+# 在 upstash 創建一個 redis
+
+1. 到 https://upstash.com/
+2. 登入
+3. 上方選擇 redis
+4. 點擊 create database
+5. 輸入 name -> 選擇 Primary Region -> 勾選 TLS (SSL) Enabled -> 點擊 Create
+6. 選擇剛剛創建的 db
+7. 滾動到 REST API 區塊複製 UPSTASH_REDIS_REST_URL 到 .env 的 REDIS_URL -> 複製 UPSTASH_REDIS_REST_TOKEN 到 .env 的 REDIS_SECRET
+8. 滾動到 Connect to your database -> 點擊 @upstash/redis tab
+9. 複製程式碼到 src/lib/redis.ts
+
+# TS Generic type
+
+## Generic type
+
+```ts
+type Test<T = number> = {
+  a: T;
+};
+const a: Test<string> = {
+  a: "test",
+};
+```
+
+## Generic type default type
+
+```ts
+interface Test2<T = number> {
+  b: T;
+}
+const b: Test2 = {
+  b: 123,
+};
+const c: Test2<string> = {
+  b: "123",
+};
+```
+
+# server component 驗證登入流程
+
+import { getAuthSession } from "@/lib/auth"; -> getAuthSession 呼叫 getServerSession(authOptions) 返回值類型為 Promise<Session | null> ，所以需要 await 等待他返回 Session | null 類型的值
+
+# client component 驗證登入流程
+
+```tsx
+import { useSession } from "next-auth/react";
+const { data: session } = useSession();
+```
+
+# zod validation for an array of objects
+https://stackoverflow.com/questions/74967542/zod-validation-for-an-array-of-objects
+
+# Deploy
+1. run `npm run lint` to see if there is any errors
+2. 部署 prisma 到 vercel 需要在 package.json 的 scripts 屬性裡加上 `"postinstall": "prisma generate"`
